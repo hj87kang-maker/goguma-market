@@ -88,6 +88,14 @@ export default async function Home({
           </div>
         )}
       </div>
+
+      <Link
+        href="/products/new"
+        className="fixed bottom-6 right-6 flex h-14 w-14 items-center justify-center rounded-full bg-brand-600 text-2xl text-white shadow-lg transition-colors hover:bg-brand-700"
+        aria-label="상품 등록"
+      >
+        +
+      </Link>
     </div>
   );
 }
