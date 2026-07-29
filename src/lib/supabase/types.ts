@@ -314,6 +314,70 @@ export type Database = {
           },
         ]
       }
+      payments: {
+        Row: {
+          amount: number
+          buyer_id: string
+          created_at: string
+          fail_code: string | null
+          fail_message: string | null
+          id: string
+          payment_key: string | null
+          product_id: string
+          seller_id: string
+          status: Database["public"]["Enums"]["payment_status"]
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          buyer_id: string
+          created_at?: string
+          fail_code?: string | null
+          fail_message?: string | null
+          id?: string
+          payment_key?: string | null
+          product_id: string
+          seller_id: string
+          status?: Database["public"]["Enums"]["payment_status"]
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          buyer_id?: string
+          created_at?: string
+          fail_code?: string | null
+          fail_message?: string | null
+          id?: string
+          payment_key?: string | null
+          product_id?: string
+          seller_id?: string
+          status?: Database["public"]["Enums"]["payment_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_buyer_id_fkey"
+            columns: ["buyer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_images: {
         Row: {
           id: string
@@ -489,11 +553,33 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      confirm_payment_success: {
+        Args: { payment_id: string; toss_payment_key: string }
+        Returns: {
+          amount: number
+          buyer_id: string
+          created_at: string
+          fail_code: string | null
+          fail_message: string | null
+          id: string
+          payment_key: string | null
+          product_id: string
+          seller_id: string
+          status: Database["public"]["Enums"]["payment_status"]
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "payments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
     }
     Enums: {
       group_member_role: "owner" | "member"
       group_member_status: "pending" | "approved" | "rejected"
+      payment_status: "pending" | "done" | "failed" | "canceled"
       product_status: "selling" | "reserved" | "sold"
       report_status: "pending" | "reviewed" | "resolved"
       report_target_type:
@@ -631,6 +717,7 @@ export const Constants = {
     Enums: {
       group_member_role: ["owner", "member"],
       group_member_status: ["pending", "approved", "rejected"],
+      payment_status: ["pending", "done", "failed", "canceled"],
       product_status: ["selling", "reserved", "sold"],
       report_status: ["pending", "reviewed", "resolved"],
       report_target_type: [
