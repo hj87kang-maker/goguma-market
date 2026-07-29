@@ -39,3 +39,8 @@ body {
   font-family: var(--font-geist-sans), "Apple SD Gothic Neo", "Malgun Gothic",
     sans-serif;
 }
+
+html {
+  /* 하단 고정 탭바(높이 4rem)에 콘텐츠가 가려진 채로 스크롤/포커스되는 것을 방지 */
+  scroll-padding-bottom: 4rem;
+}
