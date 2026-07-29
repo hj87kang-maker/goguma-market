@@ -7,7 +7,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **고구마마켓**은 동네 기반 중고거래 플랫폼입니다. 당근마켓을 레퍼런스로 하되, 동네 소모임/단톡방 기능까지 포함한 지역 커뮤니티형 서비스를 지향합니다.
 
 - **목적**: 학습 및 포트폴리오 제작 (실 서비스 운영은 목표가 아님 — 코드 품질/구조를 실무 수준으로 유지하되, 과도한 확장성·운영 인프라는 지양)
-- **현재 상태**: Next.js 스캐폴딩, Supabase 연결, DB 스키마/RLS, 로그인/회원가입, 홈/상품목록/상품상세, 상품 등록(이미지 업로드 포함) 구현 완료. 아직 없는 것: 1:1 채팅, 찜하기 UI, 소모임/단톡방 UI, 신고/차단 UI, GPS 동네 인증(현재는 상품 등록 시 지역을 수동 텍스트 입력).
+- **현재 상태**: Next.js 스캐폴딩, Supabase 연결, DB 스키마/RLS, 로그인/회원가입, 홈/상품목록/상품상세, 상품 등록(이미지 업로드 포함) 구현 완료. Vercel 프로덕션 배포 완료. 아직 없는 것: 1:1 채팅, 찜하기 UI, 소모임/단톡방 UI, 신고/차단 UI, GPS 동네 인증(현재는 상품 등록 시 지역을 수동 텍스트 입력).
+
+## 배포
+
+- **프로덕션 URL**: https://goguma-market-peach.vercel.app
+- Vercel 프로젝트 `team-5539/goguma-market`, GitHub 저장소(`hj87kang-maker/goguma-market`)와 연결되어 있어 `master` 푸시 시 자동 배포됨.
+- 환경변수(`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`)는 Vercel 프로젝트의 Production/Preview 환경에 등록되어 있음. 로컬에서 새로 설정할 필요가 있으면 `vercel env add <이름> <환경>` 또는 대시보드에서 처리.
+- 수동 배포/재배포: `vercel --prod`
+
+### ⚠️ 배포 정책 (git push ≠ 배포 승인)
+
+- 사용자가 "push해줘"라고만 요청하면 `git push`만 수행하고, `vercel --prod` 같은 수동 배포 명령은 실행하지 말 것. 배포는 별도로 명시적인 요청("배포해줘")이 있을 때만 진행한다.
+- **주의**: 이 저장소는 Vercel Git 연동이 되어 있어 `master`에 push하는 순간 Vercel이 자동으로 재배포를 트리거한다. 따라서 "push만 하고 배포는 하지 말아달라"는 요청을 받으면, push는 진행하되 자동 배포가 트리거된다는 사실을 반드시 먼저 안내하고 사용자의 확인을 받을 것 (필요하면 브랜치를 나누거나 Vercel 대시보드에서 Git 연동의 auto-deploy를 끄는 방법도 고려 가능하다고 제안).
 
 ## 구현된 화면/라우트
 
