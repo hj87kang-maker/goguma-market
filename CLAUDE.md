@@ -15,11 +15,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Vercel 프로젝트 `team-5539/goguma-market`, GitHub 저장소(`hj87kang-maker/goguma-market`)와 연결되어 있어 `master` 푸시 시 자동 배포됨.
 - 환경변수(`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`)는 Vercel 프로젝트의 Production/Preview 환경에 등록되어 있음. 로컬에서 새로 설정할 필요가 있으면 `vercel env add <이름> <환경>` 또는 대시보드에서 처리.
 - 수동 배포/재배포: `vercel --prod`
-
-### ⚠️ 배포 정책 (git push ≠ 배포 승인)
-
-- 사용자가 "push해줘"라고만 요청하면 `git push`만 수행하고, `vercel --prod` 같은 수동 배포 명령은 실행하지 말 것. 배포는 별도로 명시적인 요청("배포해줘")이 있을 때만 진행한다.
-- **주의**: 이 저장소는 Vercel Git 연동이 되어 있어 `master`에 push하는 순간 Vercel이 자동으로 재배포를 트리거한다. 따라서 "push만 하고 배포는 하지 말아달라"는 요청을 받으면, push는 진행하되 자동 배포가 트리거된다는 사실을 반드시 먼저 안내하고 사용자의 확인을 받을 것 (필요하면 브랜치를 나누거나 Vercel 대시보드에서 Git 연동의 auto-deploy를 끄는 방법도 고려 가능하다고 제안).
+- **push하면 자동 재배포된다.** 이 저장소는 Vercel Git 연동이 되어 있어 `master`에 push하는 순간 Vercel이 알아서 재배포한다. push 요청을 받으면 별도 확인 없이 그냥 push하면 되고, 그것만으로 배포까지 끝난다 (수동 `vercel --prod`를 따로 실행할 필요는 없음).
 
 ## 구현된 화면/라우트
 
