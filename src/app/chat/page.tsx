@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
@@ -29,8 +30,13 @@ export default async function ChatListPage() {
       ) : (
         <ul className="mt-4 divide-y divide-neutral-200 dark:divide-neutral-800">
           {rooms.map((room) => (
-            <li key={room.id} className="py-3 text-sm text-neutral-700 dark:text-neutral-300">
-              {room.product?.title}
+            <li key={room.id}>
+              <Link
+                href={`/chat/${room.id}`}
+                className="block py-3 text-sm text-neutral-700 hover:text-brand-600 dark:text-neutral-300 dark:hover:text-brand-400"
+              >
+                {room.product?.title}
+              </Link>
             </li>
           ))}
         </ul>

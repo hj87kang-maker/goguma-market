@@ -5,6 +5,7 @@ import { ProductGallery } from "@/components/product-gallery";
 import { formatPrice, formatRelativeTime } from "@/lib/format";
 import { PRODUCT_STATUS_BADGE_CLASS, PRODUCT_STATUS_LABEL } from "@/lib/product-status";
 import { createPaymentAction } from "@/app/payments/actions";
+import { startChatAction } from "@/app/chat/actions";
 
 export default async function ProductDetailPage({
   params,
@@ -30,6 +31,7 @@ export default async function ProductDetailPage({
     data: { user },
   } = await supabase.auth.getUser();
   const canBuy = product.status === "selling" && user?.id !== product.seller?.id;
+  const canChat = user?.id !== product.seller?.id;
 
   const images = [...(product.product_images ?? [])]
     .sort((a, b) => a.sort_order - b.sort_order)
@@ -70,16 +72,31 @@ export default async function ProductDetailPage({
             {formatPrice(product.price)}
           </p>
 
-          {canBuy && (
-            <form action={createPaymentAction}>
-              <input type="hidden" name="productId" value={product.id} />
-              <button
-                type="submit"
-                className="w-full rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-700"
-              >
-                구매하기
-              </button>
-            </form>
+          {(canChat || canBuy) && (
+            <div className="flex gap-2">
+              {canChat && (
+                <form action={startChatAction} className="flex-1">
+                  <input type="hidden" name="productId" value={product.id} />
+                  <button
+                    type="submit"
+                    className="w-full rounded-lg border border-brand-600 px-4 py-2.5 text-sm font-semibold text-brand-600 transition-colors hover:bg-brand-50 dark:text-brand-400 dark:hover:bg-neutral-900"
+                  >
+                    채팅하기
+                  </button>
+                </form>
+              )}
+              {canBuy && (
+                <form action={createPaymentAction} className="flex-1">
+                  <input type="hidden" name="productId" value={product.id} />
+                  <button
+                    type="submit"
+                    className="w-full rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-700"
+                  >
+                    구매하기
+                  </button>
+                </form>
+              )}
+            </div>
           )}
 
           <p className="whitespace-pre-wrap text-sm leading-relaxed text-neutral-700 dark:text-neutral-300">

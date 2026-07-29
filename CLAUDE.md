@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **고구마마켓**은 동네 기반 중고거래 플랫폼입니다. 당근마켓을 레퍼런스로 하되, 동네 소모임/단톡방 기능까지 포함한 지역 커뮤니티형 서비스를 지향합니다.
 
 - **목적**: 학습 및 포트폴리오 제작 (실 서비스 운영은 목표가 아님 — 코드 품질/구조를 실무 수준으로 유지하되, 과도한 확장성·운영 인프라는 지양)
-- **현재 상태**: Next.js 스캐폴딩, Supabase 연결, DB 스키마/RLS, 로그인/회원가입, 홈/상품목록/상품상세, 상품 등록(이미지 업로드 포함), 프로필 페이지(판매중/판매완료/구매내역/소모임 탭), 하단 탭바 내비게이션, TossPayments 결제(구매하기 → 결제 → 판매완료 처리) 구현 완료. Vercel 프로덕션 배포 완료. 아직 없는 것: 1:1 채팅 실제 대화 UI(목록 페이지만 있음), 찜하기 UI, 소모임 개설/가입/단톡방 UI, 신고/차단 UI, GPS 동네 인증(현재는 상품 등록 시 지역을 수동 텍스트 입력).
+- **현재 상태**: Next.js 스캐폴딩, Supabase 연결, DB 스키마/RLS, 로그인/회원가입, 홈/상품목록/상품상세, 상품 등록(이미지 업로드 포함), 프로필 페이지(판매중/판매완료/구매내역/소모임 탭), 하단 탭바 내비게이션, TossPayments 결제(구매하기 → 결제 → 판매완료 처리), 1:1 채팅(Realtime) 구현 완료. Vercel 프로덕션 배포 완료. 아직 없는 것: 찜하기 UI, 소모임 개설/가입/단톡방 UI, 신고/차단 UI, GPS 동네 인증(현재는 상품 등록 시 지역을 수동 텍스트 입력).
 
 ### 제품 방향: 인스타그램 스타일 프로필 중심 UX
 
@@ -33,7 +33,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `/products/new` — 상품 등록 (로그인 필요, 사진 최대 5장 업로드)
 - `/profile` — 로그인한 본인의 `/profile/[id]`로 리다이렉트 (비로그인 시 `/login`)
 - `/profile/[id]` — 프로필 페이지. 탭: 판매중 / 판매완료 / 구매내역 / 소모임. 본인 프로필일 때만 로그아웃 버튼 노출
-- `/chat` — 내 채팅방 목록 (로그인 필요). 아직 채팅방 생성 진입점(상품 상세의 "채팅하기")이나 개별 대화 화면(`/chat/[roomId]`)은 없음 — 다음 작업
+- `/chat` — 내 채팅방 목록 (로그인 필요)
+- `/chat/[roomId]` — 1:1 채팅방. Supabase Realtime(`postgres_changes`)으로 새 메시지 즉시 반영. 구매자에게는 대화 중에도 "구매하기" 버튼 노출
 - `/checkout/[paymentId]` — TossPayments 결제 화면. 상품 상세의 "구매하기" 버튼(`createPaymentAction`)이 `payments` pending 행을 만들고 여기로 리다이렉트함
 - `/payments/success`, `/payments/fail` — Route Handler(페이지 아님). Toss가 결제 후 리다이렉트하는 콜백 URL. 서버에서 승인(confirm) API를 호출하고 `/payments/[id]`로 다시 리다이렉트
 - `/payments/[id]` — 결제 결과 표시 페이지 (성공/실패/처리중)
@@ -80,6 +81,11 @@ npm run lint    # ESLint
 - 스키마 변경 시 `mcp__supabase__apply_migration`으로 마이그레이션을 남길 것 (직접 SQL 실행보다 마이그레이션 우선). 더미데이터 삽입 등 데이터 조작(DML)은 `mcp__supabase__execute_sql` 사용.
 - **Storage 버킷**: `product-images` (public). 업로드 경로는 `{user_id}/{product_id}/{index}.{ext}` 규칙 — RLS 정책(`storage.objects`)이 첫 폴더 세그먼트(`storage.foldername(name)[1]`)를 `auth.uid()`와 비교해 본인 것만 쓰기 허용. public 버킷이라 다운로드는 정책 없이도 가능하므로 광범위한 SELECT 정책은 만들지 말 것(목록 나열 노출 위험, 보안 어드바이저 경고 대상).
 
+## 채팅 (Supabase Realtime)
+
+- 흐름: 상품 상세 "채팅하기"(`startChatAction`) → 이미 방이 있으면 재사용, 없으면 `chat_rooms` 생성 → `/chat/[roomId]`로 이동. 메시지 전송은 `sendMessageAction`(Server Action, 단순 insert)이고, 실시간 수신은 클라이언트 컴포넌트(`src/components/chat-messages.tsx`)가 `postgres_changes` 구독으로 처리.
+- ⚠️ **Realtime 구독 전에 반드시 `supabase.realtime.setAuth(session.access_token)`을 명시적으로 호출할 것.** 자세한 내용은 아래 "개발 중 겪은 이슈"의 Realtime 항목 참고 — 이걸 빼먹으면 구독 자체는 성공(`status: "ok"`)하지만 이벤트가 하나도 안 오는, 조용히 깨지는 형태의 버그가 난다.
+
 ## 결제 (TossPayments)
 
 - v2 SDK, **결제위젯(widgets) 방식이 아니라 "개별 연동"(`tossPayments.payment({ customerKey })` → `payment.requestPayment({ method: "CARD", ... })`) 방식**을 사용한다. 이유: 이 프로젝트에 등록된 클라이언트 키가 "개별 연동 키"라서 위젯 방식(`.widgets()`)으로 초기화하면 `API 개별 연동 키는 지원하지 않습니다` 에러가 남. 새 Toss 키를 발급받아 위젯 방식으로 바꾸고 싶다면 Toss 대시보드에서 "결제위젯 연동 키"를 새로 받아야 함.
@@ -95,7 +101,8 @@ npm run lint    # ESLint
 - **페이지 안에 `<button type="submit">`이 여러 개일 때 주의**: 헤더의 로그아웃 폼과 본문 폼이 같은 페이지에 공존하므로, E2E 테스트나 자동화에서 버튼을 선택할 때 `button[type="submit"]`처럼 모호한 셀렉터를 쓰면 헤더 쪽이 먼저 매칭될 수 있다. 텍스트 기반으로 특정할 것.
 - **Supabase 기본 이메일 발송(Confirm email 켜짐)은 시간당 발송 한도가 매우 낮음**: 로컬 개발 중 회원가입을 반복 테스트하면 바로 `429 over_email_send_rate_limit`에 걸린다. 개발 중에는 대시보드(Authentication → Email)에서 "Confirm email"을 꺼서 가입 즉시 세션이 생성되게 하는 것을 권장 (MCP 도구로는 이 설정을 변경할 수 없음 — 대시보드에서 직접 처리).
 - **RLS UPDATE 정책에 `WITH CHECK` 없이 `USING`만 쓰면, 상태 전이 자체가 막힐 수 있음**: `payments`의 `pending → failed` 업데이트가 `USING (status = 'pending')`만 있는 정책 때문에 조용히 0건 처리되는(에러 없이 그냥 안 바뀌는) 버그가 있었다. `WITH CHECK`가 없으면 Postgres가 `USING`을 새 행에도 적용해서, 새 상태가 더 이상 `pending`이 아니면 체크에 걸린다. **행의 상태값 자체를 바꾸는 UPDATE 정책은 항상 `USING`(기존 행 조건)과 `WITH CHECK`(새 행 조건, 보통 소유권만 검사)를 분리해서 작성할 것.**
-- **Toss 테스트 결제는 가짜 테스트카드 번호가 따로 없음**: 실제 카드 정보를 입력해야 하며(테스트 환경이라 실제로 돈은 안 빠져나감), 그래서 이 세션에서는 결제 성공 경로(카드 승인 → `confirm_payment_success` 실행)를 실제 카드로 끝까지 클릭해보지 못했다. 대신 승인 API에 가짜 `paymentKey`를 보내 실패 응답을 받는 경로로 라우트 핸들러(승인 호출 → 실패 처리 → 결과 페이지)를 검증했다. **성공 경로를 완전히 확인하려면 실제 카드로 한 번 결제해봐야 한다.**
+- **Toss 테스트 결제는 가짜 테스트카드 번호가 따로 없음**: 실제 카드 정보를 입력해야 하며(테스트 환경이라 실제로 돈은 안 빠져나감), 그래서 이 세션에서는 결제 성공 경로(카드 승인 → `confirm_payment_success` 실행)를 실제 카드로 끝까지 클릭해보지 못했다. 대신 승인 API에 가짜 `paymentKey`를 보내 실패 응답을 받는 경로로 라우트 핸들러(승인 호출 → 실패 처리 → 결과 페이지)를 검증했다. **성공 경로를 완전히 확인하려면 실제 카드로 한 번 결제해봐야 한다.** (→ 이후 사용자가 실제 카드로 직접 확인 완료함.)
+- **Supabase Realtime(`postgres_changes`) 구독이 "성공"해도 이벤트를 전혀 못 받을 수 있음**: 브라우저 클라이언트가 쿠키에 이미 있던 세션으로 페이지를 로드한 경우(= 이 페이지에서 로그인한 게 아니라 이전 페이지에서부터 로그인 상태였던 경우), Realtime 웹소켓에 인증 토큰이 자동으로 실리지 않아 `auth.uid()`가 익명으로 평가되고, `messages_select_participant`처럼 `auth.uid()`를 참조하는 RLS 정책이 모든 이벤트를 조용히 걸러버린다. 구독 자체는 `phx_reply {"status":"ok"}`로 정상 응답하기 때문에 에러 없이 그냥 아무 일도 안 일어나는 것처럼 보인다. **해결**: 채널을 구독하기 전에 `const { data: { session } } = await supabase.auth.getSession(); if (session) supabase.realtime.setAuth(session.access_token);`를 먼저 호출할 것 (`src/components/chat-messages.tsx` 참고). 실시간 기능이 "가끔 안 온다"가 아니라 "전혀 안 온다"면 이걸 가장 먼저 의심할 것.
 
 ## 플랫폼 형태
 
