@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **고구마마켓**은 동네 기반 중고거래 플랫폼입니다. 당근마켓을 레퍼런스로 하되, 동네 소모임/단톡방 기능까지 포함한 지역 커뮤니티형 서비스를 지향합니다.
 
 - **목적**: 학습 및 포트폴리오 제작 (실 서비스 운영은 목표가 아님 — 코드 품질/구조를 실무 수준으로 유지하되, 과도한 확장성·운영 인프라는 지양)
-- **현재 상태**: Next.js 스캐폴딩 완료, Supabase 프로젝트 연결 완료. 화면/스키마는 아직 구현 전.
+- **현재 상태**: Next.js 스캐폴딩 완료, Supabase 프로젝트 연결 완료, DB 스키마/RLS 구현 완료. 화면(로그인·홈·상품목록 등)은 아직 구현 전.
 
 ## 명령어
 
@@ -66,16 +66,30 @@ npm run lint    # ESLint
 - 소셜 로그인(카카오/구글 등)
 - 매너온도 등 고도화된 신뢰도 지표
 
-## 데이터 모델 초안
+## 데이터 모델 (구현 완료)
 
-향후 스키마 설계 시 아래 엔터티를 기준으로 시작할 것:
+Supabase Postgres에 마이그레이션으로 적용 완료 (`mcp__supabase__list_migrations`로 이력 확인 가능). 모든 테이블에 RLS 활성화, 보안 어드바이저 경고 0건.
 
-- `users` — 프로필, 인증된 동네 정보
-- `products` — 상품(제목/가격/카테고리/이미지/상태/지역/판매자)
-- `favorites` — 사용자-상품 찜 관계
-- `chat_rooms` / `messages` — 상품 기준 1:1 채팅
-- `groups`(소모임) / `group_members` / `group_messages` — 동네 소모임 및 단톡방
-- `reports` — 신고 대상(상품/사용자/게시글), 사유, 처리 상태
+- `profiles` — `auth.users`와 1:1 (id 공유). 닉네임, 동네 인증 정보(`neighborhood_name`/`lat`/`lng`). 회원가입 시 트리거(`handle_new_user`)로 자동 생성.
+- `categories` — 상품 카테고리 lookup (디지털기기/가구·인테리어/의류 등 11종 시드 데이터 포함).
+- `products` / `product_images` — 상품과 사진(정렬 순서 포함). `status`는 `selling`/`reserved`/`sold` enum.
+- `favorites` — `(user_id, product_id)` 복합 PK로 찜 관계 표현.
+- `chat_rooms` / `messages` — 상품 기준 1:1 채팅. `chat_rooms`는 `(product_id, buyer_id)` unique. `messages`는 Realtime 발행(publication) 등록됨.
+- `groups` / `group_members` / `group_messages` — 동네 소모임. 개설 시 트리거(`handle_new_group`)로 개설자가 `owner`/`approved` 멤버로 자동 등록. 가입은 `pending`으로 신청 후 owner가 승인/거절(`group_members` update). `group_messages`도 Realtime 등록됨.
+- `reports` — 신고 대상(`product`/`profile`/`group`/`message`/`group_message`) + 사유 + 처리 상태.
+- `blocks` — `(blocker_id, blocked_id)` 복합 PK로 사용자 차단.
+
+### RLS 정책 원칙
+
+- 조회(select)는 기본적으로 공개(상품/카테고리/프로필/소모임)이거나 당사자 한정(찜/채팅/신고/차단/소모임멤버)으로 나뉨.
+- 쓰기(insert/update/delete)는 항상 `auth.uid()`가 본인 소유 행일 때만 허용.
+- `handle_new_user`/`handle_new_group`은 트리거 전용이며 `anon`/`authenticated`의 직접 RPC 호출 권한은 회수됨(`harden_trigger_functions` 마이그레이션).
+- 새 테이블 추가 시 반드시 RLS를 켜고, 변경 후 `mcp__supabase__get_advisors`(security)로 점검할 것.
+
+### 타입 연동
+
+- `src/lib/supabase/types.ts` — `mcp__supabase__generate_typescript_types`로 생성한 `Database` 타입. 스키마 변경 시 재생성해서 덮어쓸 것.
+- `client.ts`/`server.ts` 모두 `createBrowserClient<Database>`/`createServerClient<Database>`로 타입 연결됨.
 
 ## 디자인 가이드
 
