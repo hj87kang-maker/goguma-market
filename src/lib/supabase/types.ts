@@ -345,6 +345,7 @@ export type Database = {
       }
       products: {
         Row: {
+          buyer_id: string | null
           category_id: number
           created_at: string
           description: string
@@ -359,6 +360,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          buyer_id?: string | null
           category_id: number
           created_at?: string
           description?: string
@@ -373,6 +375,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          buyer_id?: string | null
           category_id?: number
           created_at?: string
           description?: string
@@ -387,6 +390,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "products_buyer_id_fkey"
+            columns: ["buyer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "products_category_id_fkey"
             columns: ["category_id"]

@@ -16,7 +16,7 @@ export default async function ProductDetailPage({
   const { data: product } = await supabase
     .from("products")
     .select(
-      "id, title, description, price, status, neighborhood_name, created_at, category:categories(name), seller:profiles!products_seller_id_fkey(nickname), product_images(url, sort_order)",
+      "id, title, description, price, status, neighborhood_name, created_at, category:categories(name), seller:profiles!products_seller_id_fkey(id, nickname), product_images(url, sort_order)",
     )
     .eq("id", id)
     .maybeSingle();
@@ -69,7 +69,15 @@ export default async function ProductDetailPage({
           </p>
 
           <div className="mt-2 border-t border-neutral-200 pt-3 text-sm text-neutral-600 dark:border-neutral-800 dark:text-neutral-400">
-            판매자 {product.seller?.nickname}
+            판매자{" "}
+            {product.seller && (
+              <Link
+                href={`/profile/${product.seller.id}`}
+                className="font-medium text-brand-600 hover:underline dark:text-brand-400"
+              >
+                {product.seller.nickname}
+              </Link>
+            )}
           </div>
         </div>
       </div>

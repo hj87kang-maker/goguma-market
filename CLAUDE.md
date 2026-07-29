@@ -7,7 +7,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **고구마마켓**은 동네 기반 중고거래 플랫폼입니다. 당근마켓을 레퍼런스로 하되, 동네 소모임/단톡방 기능까지 포함한 지역 커뮤니티형 서비스를 지향합니다.
 
 - **목적**: 학습 및 포트폴리오 제작 (실 서비스 운영은 목표가 아님 — 코드 품질/구조를 실무 수준으로 유지하되, 과도한 확장성·운영 인프라는 지양)
-- **현재 상태**: Next.js 스캐폴딩, Supabase 연결, DB 스키마/RLS, 로그인/회원가입, 홈/상품목록/상품상세, 상품 등록(이미지 업로드 포함) 구현 완료. Vercel 프로덕션 배포 완료. 아직 없는 것: 1:1 채팅, 찜하기 UI, 소모임/단톡방 UI, 신고/차단 UI, GPS 동네 인증(현재는 상품 등록 시 지역을 수동 텍스트 입력).
+- **현재 상태**: Next.js 스캐폴딩, Supabase 연결, DB 스키마/RLS, 로그인/회원가입, 홈/상품목록/상품상세, 상품 등록(이미지 업로드 포함), 프로필 페이지(판매중/판매완료/구매내역/소모임 탭), 하단 탭바 내비게이션 구현 완료. Vercel 프로덕션 배포 완료. 아직 없는 것: 1:1 채팅 실제 대화 UI(목록 페이지만 있음), 찜하기 UI, 소모임 개설/가입/단톡방 UI, 신고/차단 UI, GPS 동네 인증(현재는 상품 등록 시 지역을 수동 텍스트 입력).
+
+### 제품 방향: 인스타그램 스타일 프로필 중심 UX
+
+당근마켓의 피드형 UX에서, **프로필 페이지를 중심으로 한 인스타그램 스타일**로 방향을 구체화함:
+
+- 회원가입 시 자동으로 자신의 프로필 페이지(`/profile/[id]`)가 생기고, 거기서 자유롭게 상품을 판매·조회.
+- 다른 사람의 프로필에 들어가서 게시물(상품)별로 **DM(채팅)을 걸어 거래**하는 방식 — 채팅은 상품 단위(`chat_rooms.product_id`)로 개설됨.
+- 소모임은 개설 즉시 자동으로 단톡방이 열림(이미 스키마 트리거로 구현됨: `handle_new_group`이 개설자를 owner/approved 멤버로 등록).
+- 내비게이션은 하단 탭바(홈/채팅/프로필) 구조 — 상단 헤더는 로고만 남기고, 로그인/로그아웃은 프로필 페이지로 이동.
 
 ## 배포
 
@@ -20,10 +29,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## 구현된 화면/라우트
 
 - `/` — 상품 목록(카테고리 필터, 그리드), 우측 하단 상품 등록 FAB
-- `/products/[id]` — 상품 상세 (이미지 갤러리, 판매자 정보)
+- `/products/[id]` — 상품 상세 (이미지 갤러리, 판매자 프로필 링크)
 - `/products/new` — 상품 등록 (로그인 필요, 사진 최대 5장 업로드)
+- `/profile` — 로그인한 본인의 `/profile/[id]`로 리다이렉트 (비로그인 시 `/login`)
+- `/profile/[id]` — 프로필 페이지. 탭: 판매중 / 판매완료 / 구매내역 / 소모임. 본인 프로필일 때만 로그아웃 버튼 노출
+- `/chat` — 내 채팅방 목록 (로그인 필요). 아직 채팅방 생성 진입점(상품 상세의 "채팅하기")이나 개별 대화 화면(`/chat/[roomId]`)은 없음 — 다음 작업
 - `/login`, `/signup`, `/signup/check-email` — 인증
-- 헤더(`src/components/site-header.tsx`)는 모든 페이지 레이아웃에 공통 렌더링되며 로그인 상태에 따라 닉네임/로그아웃 또는 로그인 버튼을 보여줌
+- `src/components/site-header.tsx` — 상단 헤더, 로고만 표시 (로그인/로그아웃은 프로필 페이지로 이동함)
+- `src/components/bottom-nav.tsx` — 하단 탭바(홈/채팅/프로필), 모든 페이지에 공통 렌더링. `usePathname`으로 활성 탭 표시
 
 ## 명령어
 
@@ -95,7 +108,7 @@ Supabase Postgres에 마이그레이션으로 적용 완료 (`mcp__supabase__lis
 
 - `profiles` — `auth.users`와 1:1 (id 공유). 닉네임, 동네 인증 정보(`neighborhood_name`/`lat`/`lng`). 회원가입 시 트리거(`handle_new_user`)로 자동 생성.
 - `categories` — 상품 카테고리 lookup (디지털기기/가구·인테리어/의류 등 11종 시드 데이터 포함).
-- `products` / `product_images` — 상품과 사진(정렬 순서 포함). `status`는 `selling`/`reserved`/`sold` enum.
+- `products` / `product_images` — 상품과 사진(정렬 순서 포함). `status`는 `selling`/`reserved`/`sold` enum. `buyer_id`(nullable, profiles FK)는 거래 완료 시 구매자를 기록하는 컬럼 — 현재 스키마만 있고 이걸 채우는 UI(채팅방에서 "구매자 지정")는 아직 미구현.
 - `favorites` — `(user_id, product_id)` 복합 PK로 찜 관계 표현.
 - `chat_rooms` / `messages` — 상품 기준 1:1 채팅. `chat_rooms`는 `(product_id, buyer_id)` unique. `messages`는 Realtime 발행(publication) 등록됨.
 - `groups` / `group_members` / `group_messages` — 동네 소모임. 개설 시 트리거(`handle_new_group`)로 개설자가 `owner`/`approved` 멤버로 자동 등록. 가입은 `pending`으로 신청 후 owner가 승인/거절(`group_members` update). `group_messages`도 Realtime 등록됨.
@@ -104,10 +117,12 @@ Supabase Postgres에 마이그레이션으로 적용 완료 (`mcp__supabase__lis
 
 ### RLS 정책 원칙
 
-- 조회(select)는 기본적으로 공개(상품/카테고리/프로필/소모임)이거나 당사자 한정(찜/채팅/신고/차단/소모임멤버)으로 나뉨.
+- 조회(select)는 기본적으로 공개(상품/카테고리/프로필/소모임)이거나 당사자 한정(찜/채팅/신고/차단)으로 나뉨.
+- `group_members`는 예외적으로 혼합: **승인된(`status='approved'`) 멤버십은 공개 조회 가능**(`group_members_select_public_approved` 정책) — 프로필 페이지의 "가입한 소모임" 탭이 다른 사람에게도 보여야 하기 때문. `pending`/`rejected`는 여전히 본인/모임장만 조회 가능.
 - 쓰기(insert/update/delete)는 항상 `auth.uid()`가 본인 소유 행일 때만 허용.
 - `handle_new_user`/`handle_new_group`은 트리거 전용이며 `anon`/`authenticated`의 직접 RPC 호출 권한은 회수됨(`harden_trigger_functions` 마이그레이션).
 - 새 테이블 추가 시 반드시 RLS를 켜고, 변경 후 `mcp__supabase__get_advisors`(security)로 점검할 것.
+- **프로필 페이지처럼 "다른 사람이 봐야 하는" 데이터를 새로 노출할 때는, 해당 데이터의 select 정책이 실제로 공개인지 먼저 확인할 것.** 소모임 탭 구현 때 `group_members` select가 본인/모임장 한정이라 다른 사람 프로필에서 빈 목록으로 보이는 버그가 있었음(데이터는 있는데 RLS가 막음). 로컬에서 화면이 비어 보이면 코드 버그보다 RLS를 먼저 의심해볼 것.
 
 ### 타입 연동
 
