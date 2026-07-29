@@ -12,6 +12,20 @@
   --font-mono: var(--font-geist-mono);
 }
 
+/* 고구마마켓 브랜드 컬러: 고구마(자주감자) 보라/자주빛 */
+@theme {
+  --color-brand-50: #fbf4fb;
+  --color-brand-100: #f6e6f5;
+  --color-brand-200: #eacbe7;
+  --color-brand-300: #d8a4d1;
+  --color-brand-400: #c179b7;
+  --color-brand-500: #a8549b;
+  --color-brand-600: #8b3d82;
+  --color-brand-700: #6d2f65;
+  --color-brand-800: #55254f;
+  --color-brand-900: #3f1c3b;
+}
+
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;
@@ -22,5 +36,6 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), "Apple SD Gothic Neo", "Malgun Gothic",
+    sans-serif;
 }
